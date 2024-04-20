@@ -21,6 +21,7 @@ class Migration1585140867Merchant extends MigrationStep
               `website` VARCHAR(255) NULL,
               `phone_number` VARCHAR(255) NULL,
               `name` VARCHAR(255) COLLATE utf8mb4_unicode_ci NULL,
+              `custom_fields` json DEFAULT NULL,
               PRIMARY KEY (`id`),
               CONSTRAINT `fk.merchant.customer_id` FOREIGN KEY (`customer_id`)
                 REFERENCES `customer` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE

@@ -62,6 +62,21 @@ class MerchantProductController
     private $productMediaRepository;
 
     /**
+     * @var EntityRepositoryInterface
+     */
+    private $productCategoryRepository;
+  
+    /**
+     * @var EntityRepositoryInterface
+     */
+    private $posProductRepository;
+
+    /**
+     * @var EntityRepositoryInterface
+     */
+    private $deliveryTimeRepository;
+
+    /**
      * @var NumberRangeValueGeneratorInterface
      */
     private $numberRangeValueGenerator;
@@ -77,14 +92,21 @@ class MerchantProductController
         EntityRepositoryInterface $mediaRepository,
         EntityRepositoryInterface $merchantRepository,
         EntityRepositoryInterface $productMediaRepository,
+        EntityRepositoryInterface $productCategoryRepository,
+        EntityRepositoryInterface $posProductRepository,
+        EntityRepositoryInterface $deliveryTimeRepository,
         NumberRangeValueGeneratorInterface $numberRangeValueGenerator,
         StorefrontMediaUploader $storefrontMediaUploader
+        
     ) {
         $this->productRepository = $productRepository;
         $this->taxRepository = $taxRepository;
         $this->mediaRepository = $mediaRepository;
         $this->merchantRepository = $merchantRepository;
         $this->productMediaRepository = $productMediaRepository;
+        $this->productCategoryRepository = $productCategoryRepository;
+        $this->posProductRepository = $posProductRepository;
+        $this->deliveryTimeRepository = $deliveryTimeRepository;
         $this->numberRangeValueGenerator = $numberRangeValueGenerator;
         $this->storefrontMediaUploader = $storefrontMediaUploader;
     }
@@ -116,6 +138,7 @@ class MerchantProductController
         $total = $this->productRepository->search($criteria, Context::createDefaultContext())->getTotal();
 
         $criteria->addAssociation('media');
+        $criteria->addAssociation('categories');
 
         if ($request->query->has('limit')) {
             $criteria->setLimit((int) $request->query->get('limit'));
@@ -156,7 +179,9 @@ class MerchantProductController
                 'price' => $productPrice->getGross(),
                 'tax' => $productTax->getTaxRate(),
                 'active' => $product->getActive(),
-                'productType' => $product->getCustomFields()['productType']
+                'productType' => $product->getCustomFields()['productType'],
+                'customFields' => $product->getCustomFields(),
+                'categories' => $product->getCategories()->getIds()
             ];
 
             foreach ($product->getMedia() as $media) {
@@ -237,6 +262,8 @@ class MerchantProductController
             'description' => $request->request->get('description'),
             'stock' => $request->request->getInt('stock', 0),
             'productNumber' => $productNumber,
+            "ean" => $request->request->get('ean'),
+            "deliveryTimeId" => $request->request->get('delivery'),
             'price' => [
                 [
                     'currencyId' => Defaults::CURRENCY,
@@ -256,6 +283,7 @@ class MerchantProductController
                     'id' => $merchant->getId()
                 ]
             ],
+            'categories' =>  $request->request->get('category'),
             'active' => (bool) $request->request->get('active', true),
             'customFields' => [
                 'productType' => $request->request->get('productType')
@@ -266,6 +294,8 @@ class MerchantProductController
         $productData['tax'] = ['id' => $taxEntity->getId()];
 
         $productData = $this->checkForMedias($request, $context, $productData);
+        
+        
 
         // Write in default language (otherwise we get an exception)
         $this->productRepository->create([$productData], Context::createDefaultContext());
@@ -279,6 +309,17 @@ class MerchantProductController
                 ]
             ]
         ], $context->getContext());
+        
+        $posProduct = [
+            
+            'outletId' => $request->request->get('outletId'),
+            'productId' => $productData['id'],
+            'stock' => $request->request->get('stock'),
+            'status' => (bool) $request->request->get('active', true)
+            
+        ];
+      
+        $this->posProductRepository->create([$posProduct], Context::createDefaultContext());
 
         return new JsonResponse(
             ['message' => 'Successfully created product!', 'data' => $this->fetchProductData($productData['id'], $merchant)]
@@ -301,7 +342,12 @@ class MerchantProductController
      */
     public function update(Request $request, string $productId, MerchantEntity $merchant, SalesChannelContext $context): JsonResponse
     {
+
         $product = $this->getProductFromMerchant($productId, $merchant);
+        
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('productId', $product->getId()));
+        $posProducts = $this->posProductRepository->search($criteria, Context::createDefaultContext());
 
         if (!$product) {
             throw new NotFoundHttpException(sprintf('Cannot find product by id %s', $productId));
@@ -329,6 +375,17 @@ class MerchantProductController
         if ($request->request->has('stock')) {
             $productData['stock'] = $request->request->getInt('stock', 0);
         }
+        if ($request->request->has('ean')) {
+            $productData['ean'] = $request->request->get('ean');
+        }
+        if ($request->request->has('delivery')) {
+            $productData['deliveryTimeId'] = $request->request->get('delivery');
+        }
+        if ($request->request->has('category')) {
+
+            $this->deletePreviousCategories($productId);
+            $productData['categories'] = $request->request->get('category');
+        }
 
         if ($request->request->has('price')) {
             $productTax = $product->getTax();
@@ -353,7 +410,10 @@ class MerchantProductController
             $productData['customFields'] = ['productType' => $request->request->get('productType')];
         }
 
-        $this->deletePreviousMedias($request, $productId);
+        if($request->request->has('mediaId')){
+            $this->deletePreviousMedias($request, $request->request->get('mediaId'));
+        }
+        
         $productData = $this->checkForMedias($request, $context, $productData);
 
         if (!$productData) {
@@ -425,6 +485,38 @@ class MerchantProductController
         return new JsonResponse([
             'success' => true
         ]);
+    }
+
+    /**
+     * @OA\Get(
+     *      path="/delivery-time",
+     *      description="List all Delivery times",
+     *      operationId="loaddeliveryTimes",
+     *      tags={"Merchant"},
+     *      @OA\Response(
+     *          response="200",
+     *          @OA\JsonContent(
+     *              ref="#/definitions/SuccessResponse"
+     *          )
+     *     )
+     * )
+     * @Route(name="merchant-api.deliverytime.load", path="/merchant-api/v{version}/delivery-time")
+     */
+    public function delivery_time(SalesChannelContext $context): JsonResponse
+    {
+        
+        $delivery_times = $this->deliveryTimeRepository->search( new Criteria(), Context::createDefaultContext());
+        $timeResponse = [];
+        foreach($delivery_times as $key => $delivery_time){
+            $time = array(
+                'name' => $delivery_time->getName(),
+                "id" => $key
+            );
+
+            $timeResponse[] = $time;
+        }
+        return new JsonResponse($timeResponse);
+
     }
 
     private function getProductFromMerchant(string $productId, MerchantEntity $merchant): ProductEntity
@@ -529,21 +621,14 @@ class MerchantProductController
         return $productData;
     }
 
-    private function deletePreviousMedias(Request $request, string $productId): void
+    private function deletePreviousMedias(Request $request, string $mediaId): void
     {
-        if (!$request->files->has('media')) {
-            return;
-        }
-
-        $criteria = new Criteria([$productId]);
-        $criteria->addAssociation('media');
-        /** @var ProductEntity $product */
-        $product = $this->productRepository->search($criteria, Context::createDefaultContext())->first();
+        
 
         $mediaIds = [];
 
-        foreach ($product->getMedia() as $productMediaId => $media) {
-            $mediaIds[] = ['id' => $productMediaId];
+        if (isset($mediaId)) {
+            $mediaIds[] = ['id' => $mediaId];
         }
 
         if (empty($mediaIds)) {
@@ -557,6 +642,7 @@ class MerchantProductController
     {
         $criteria = new Criteria([$productId]);
         $criteria->addAssociation('merchants');
+        $criteria->addAssociation('categories');
         $criteria->addFilter(new EqualsFilter('merchants.id', $merchant->getId()));
         $criteria->addAssociation('media');
 
@@ -587,6 +673,10 @@ class MerchantProductController
             'tax' => $taxEntity->getTaxRate(),
             'active' => $product->getActive(),
             'productType' => $product->getCustomFields()['productType'],
+            'customFields' => $product->getCustomFields(),
+            'categories' => $product->getCategories(),
+            'ean' => $product->getEan(),
+            'deliveryId' => $product->getDeliveryTimeId(),
             'media' => []
         ];
 
@@ -596,7 +686,7 @@ class MerchantProductController
         }
 
         if ($productMediaCollection->count() > 0) {
-            foreach ($productMediaCollection as $media) {
+            foreach ($productMediaCollection as $productMediaId => $media) {
                 $mediaEntity = $media->getMedia();
                 if ($mediaEntity === null) {
                     continue;
@@ -604,11 +694,36 @@ class MerchantProductController
 
                 $productData['media'][] = [
                     'url' => $mediaEntity->getUrl(),
-                    'id' => $mediaEntity->getId()
+                    'id' => $productMediaId
                 ];
             }
         }
 
         return $productData;
+    }
+
+
+    private function deletePreviousCategories(string $productId){
+
+
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('id', $productId));
+        $criteria->addAssociation('categories');
+
+        $data = $this->productRepository->search($criteria, Context::createDefaultContext())->first();
+
+        $categories = [];
+        if($data){
+            $categories = $data->getCategories()->getIds();
+        }
+
+        if(count($categories) > 0){
+            foreach($categories as $category){
+                $this->productCategoryRepository->delete([[ 
+                    'productId' => $productId, 
+                    'categoryId' => $category
+                ]], Context::createDefaultContext());
+            }
+        }
     }
 }

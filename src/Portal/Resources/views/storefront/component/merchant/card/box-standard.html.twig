@@ -61,7 +61,12 @@
 
                             {% block component_merchant_availability %}
                                 {% sw_include 'storefront/component/merchant/availability-badge.html.twig' with {'availability': merchant.availability, 'availabilityText': merchant.availabilityText} %}
-                            {% endblock %}
+                          <style>
+                            .text-ticker {
+    display: none;
+}
+                            </style>
+                          {% endblock %}
 
                             {% block component_merchant_box_name %}
                                 <a href="{{ seoUrl('storefront.merchant.detail', {'id': id}) }}"
@@ -76,35 +81,6 @@
                                     {% if merchant.publicDescription %}
                                         {{ merchant.publicDescription|striptags|raw }}
                                     {% endif %}
-                                </div>
-                            {% endblock %}
-
-                            {% block component_merchant_box_phone %}
-                                <div class="phone-wrapper">
-
-                                    {% if merchant.publicPhoneNumber %}
-                                        <span class="icon-holder">
-                                            {% sw_icon 'phone-2' style {'pack': 'sw-icon-kit'} %}
-                                        </span>
-                                        <span>{{ merchant.publicPhoneNumber }}</span>
-                                    {% endif %}
-
-                                </div>
-                            {% endblock %}
-
-                            {% block component_merchant_box_mail %}
-                                <div class="mail-wrapper">
-
-                                    {% if merchant.publicEmail %}
-                                        <span class="icon-holder">
-                                            {% sw_icon 'envelope' %}
-                                        </span>
-                                        <a href="mailto:{{ merchant.publicEmail }}"
-                                           title="{{ merchant.publicEmail }}">
-                                            {{ merchant.publicEmail }}
-                                        </a>
-                                    {% endif %}
-
                                 </div>
                             {% endblock %}
 

@@ -75,7 +75,7 @@ class ResetPasswordController
      */
     public function reset(RequestDataBag $dataBag): Response
     {
-        $successResponse = new JsonResponse(['success' => true]);
+        
 
         if (!$dataBag->has('email')) {
             throw new \InvalidArgumentException('Missing email request argument');
@@ -89,6 +89,7 @@ class ResetPasswordController
         $merchant = $this->merchantRepository->search($criteria, Context::createDefaultContext())->first();
 
         if (!$merchant) {
+            $successResponse = new JsonResponse(['success' => false]);
             return $successResponse;
         }
 
@@ -106,6 +107,7 @@ class ResetPasswordController
         ], Context::createDefaultContext());
 
         $this->sendRecoveryMail($token, $merchant);
+        $successResponse = new JsonResponse(['success' => true]);
 
         return $successResponse;
     }

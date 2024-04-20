@@ -122,6 +122,12 @@ class SystemInstallCommand extends Command
                 '--all'  => true,
             ],
             [
+                'command' =>'database:migrate',
+                'identifier' => 'LocalDelivery',
+                '--all'  => true,
+            ],
+
+            [
                 'command' => 'database:migrate-destructive',
                 '--all'  => true,
             ],

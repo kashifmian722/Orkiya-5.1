@@ -32,6 +32,7 @@ class Migration1585140869Merchant extends MigrationStep
                 `category_id` BINARY(16) NULL,
                 `created_at` DATETIME(3) NOT NULL,
                 `updated_at` DATETIME(3) NULL,
+                `custom_fields` json DEFAULT NULL,
                 PRIMARY KEY (`id`),
                 CONSTRAINT `fk.merchant.customer_id` FOREIGN KEY (`customer_id`) REFERENCES `customer` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

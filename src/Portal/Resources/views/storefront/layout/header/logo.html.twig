@@ -4,11 +4,7 @@
        title="{{ "header.logoLink"|trans|striptags }}">
         <picture>
             {% block layout_header_logo_image_default %}
-                {% if context.salesChannel.extension('organization').logo %}
-                    <img src="{{ context.salesChannel.extension('organization').logo.url |sw_encode_url }}"
-                         alt="{{ "header.logoLink"|trans|striptags }}"
-                         class="img-fluid header-logo-main-img"/>
-                {% endif %}
+            <img src="https://orkiya.com/media/ed/da/75/1703491252/orkiya logo png-01 (1) (4).png">
             {% endblock %}
         </picture>
     </a>

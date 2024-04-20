@@ -37,6 +37,7 @@ use Shopware\Production\Merchants\Content\Merchant\Aggregate\MerchantService\Mer
 use Shopware\Production\Merchants\Content\Merchant\Aggregate\MerchantShippingMethod\MerchantShippingMethodDefinition;
 use Shopware\Production\Merchants\Content\Service\ServiceDefinition;
 use Shopware\Production\Voucher\Checkout\SoldVoucher\SoldVoucherDefinition;
+use Shopware\Core\Framework\DataAbstractionLayer\Field\CustomFields;
 
 class MerchantDefinition extends EntityDefinition
 {
@@ -70,6 +71,10 @@ class MerchantDefinition extends EntityDefinition
             (new StringField('public_phone_number', 'publicPhoneNumber')),
             (new StringField('public_email', 'publicEmail'))->addFlags(),
             (new LongTextField('public_opening_times', 'publicOpeningTimes'))->addFlags(),
+
+            
+
+
             (new LongTextField('public_description', 'publicDescription'))->addFlags(),
             new StringField('public_website', 'publicWebsite'),
             (new IntField('availability', 'availability', 0, 2)),
@@ -84,6 +89,18 @@ class MerchantDefinition extends EntityDefinition
             (new StringField('street', 'street'))->addFlags(),
             (new StringField('zip', 'zip'))->addFlags(),
             (new StringField('city', 'city'))->addFlags(),
+            (new StringField('whatsapp', 'whatsapp'))->addFlags(),
+            (new StringField('facebook', 'facebook'))->addFlags(),
+            (new StringField('instagram', 'instagram'))->addFlags(),
+            (new StringField('twitter', 'twitter'))->addFlags(),
+            (new StringField('youtube', 'youtube'))->addFlags(),
+            (new StringField('longitude', 'longitude'))->addFlags(),
+            (new StringField('latitude', 'latitude'))->addFlags(),
+            (new StringField('radius', 'radius'))->addFlags(),
+            (new StringField('locationpin', 'locationpin'))->addFlags(),
+            (new StringField('googlemap', 'googlemap'))->addFlags(),
+            (new StringField('tags', 'tags'))->addFlags(),
+
 
             (new FkField('country_id', 'countryId', CountryDefinition::class))->addFlags(),
             (new OneToOneAssociationField('country', 'country_id', 'id', CountryDefinition::class)),
@@ -121,7 +138,8 @@ class MerchantDefinition extends EntityDefinition
             new ManyToManyAssociationField('media', MediaDefinition::class, MerchantMediaDefinition::class, 'merchant_id', 'media_id'),
             new ManyToManyAssociationField('shippingMethods', ShippingMethodDefinition::class, MerchantShippingMethodDefinition::class, 'merchant_id', 'shipping_method_id'),
             new ManyToManyAssociationField('services', ServiceDefinition::class, MerchantServiceDefinition::class, 'merchant_id', 'service_id'),
-            new OneToManyAssociationField('soldVouchers', SoldVoucherDefinition::class, 'merchant_id')
+            new OneToManyAssociationField('soldVouchers', SoldVoucherDefinition::class, 'merchant_id'),
+            new CustomFields(),
         ]);
     }
 }

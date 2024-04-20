@@ -70,6 +70,72 @@ class MerchantEntity extends Entity
      */
     protected $publicOpeningTimes;
 
+     /**
+     * @var string|null
+     * @OA\Property()
+     */
+    protected $whatsapp;
+
+     /**
+     * @var string|null
+     * @OA\Property()
+     */
+    protected $facebook;
+
+     /**
+     * @var string|null
+     * @OA\Property()
+     */
+    protected $instagram;
+
+     /**
+     * @var string|null
+     * @OA\Property()
+     */
+    protected $twitter;
+
+     /**
+     * @var string|null
+     * @OA\Property()
+     */
+    protected $youtube;
+
+     /**
+     * @var string|null
+     * @OA\Property()
+     */
+    protected $longitude;
+
+     /**
+     * @var string|null
+     * @OA\Property()
+     */
+    protected $latitude;
+
+    /**
+     * @var string|null
+     * @OA\Property()
+     */
+    protected $radius;
+  
+      /**
+     * @var string|null
+     * @OA\Property()
+     */
+    protected $locationpin;
+
+    /**
+     * @var string|null
+     * @OA\Property()
+     */
+    protected $googlemap;
+
+    /**
+     * @var string|null
+     * @OA\Property()
+     */
+    protected $tags;
+
     /**
      * @var string|null
      * @OA\Property()
@@ -142,6 +208,11 @@ class MerchantEntity extends Entity
     protected $salesChannelId;
 
     /**
+     * @var array|null
+     */
+    protected $customFields;
+    
+    /**
      * @var SalesChannelEntity|null
      */
     protected $salesChannel;
@@ -183,10 +254,14 @@ class MerchantEntity extends Entity
      */
     protected $coverId;
 
+
+
     /**
      * @var MediaEntity|null
      */
     protected $cover;
+
+
 
     /**
      * @var string|null
@@ -325,6 +400,116 @@ class MerchantEntity extends Entity
     public function setPublicOpeningTimes(?string $publicOpeningTimes): void
     {
         $this->publicOpeningTimes = $publicOpeningTimes;
+    }
+
+    public function getwhatsapp(): ?string
+    {
+        return $this->whatsapp;
+    }
+
+    public function setwhatsapp(?string $whatsapp): void
+    {
+        $this->whatsapp = $whatsapp;
+    }
+
+    public function getfacebook(): ?string
+    {
+        return $this->facebook;
+    }
+
+    public function setfacebook(?string $facebook): void
+    {
+        $this->facebook = $facebook;
+    }
+
+    public function getinstagram(): ?string
+    {
+        return $this->instagram;
+    }
+
+    public function setinstagram(?string $instagram): void
+    {
+        $this->instagram = $instagram;
+    }
+
+    public function getyoutube(): ?string
+    {
+        return $this->youtube;
+    }
+
+    public function setyoutube(?string $youtube): void
+    {
+        $this->youtube = $youtube;
+    }
+
+    public function gettwitter(): ?string
+    {
+        return $this->twitter;
+    }
+
+    public function settwitter(?string $twitter): void
+    {
+        $this->twitter = $twitter;
+    }
+
+    public function getlongitude(): ?string
+    {
+        return $this->longitude;
+    }
+
+    public function setlongitude(?string $longitude): void
+    {
+        $this->longitude = $longitude;
+    }
+
+    public function getlatitude(): ?string
+    {
+        return $this->latitude;
+    }
+
+    public function setlatitude(?string $latitude): void
+    {
+        $this->latitude = $latitude;
+    }
+
+    public function getradius(): ?string
+    {
+        return $this->radius;
+    }
+
+    public function setradius(?string $radius): void
+    {
+        $this->radius = $radius;
+    }
+  
+      public function getlocationpin(): ?string
+    {
+        return $this->locationpin;
+    }
+
+    public function setlocationpin(?string $locationpin): void
+    {
+        $this->locationpin = $locationpin;
+    }
+
+    public function getgooglemap(): ?string
+    {
+        return $this->googlemap;
+    }
+
+    public function setgooglemap(?string $googlemap): void
+    {
+        $this->radius = $googlemap;
+    }
+
+    public function gettags(): ?string
+    {
+        return $this->tags;
+    }
+
+    public function settags(?string $tags): void
+    {
+        $this->radius = $tags;
     }
 
     public function getPublicDescription(): ?string
@@ -538,6 +723,7 @@ class MerchantEntity extends Entity
         $this->coverId = $coverId;
     }
 
+   
     public function getImprint(): ?string
     {
         return $this->imprint;
@@ -619,6 +805,16 @@ class MerchantEntity extends Entity
     public function setMollieTestEnabled(bool $mollieTestEnabled): void
     {
         $this->mollieTestEnabled = $mollieTestEnabled;
+    }
+
+    public function getCustomFields(): ?array
+    {
+        return $this->customFields;
+    }
+
+    public function setCustomFields(?array $customFields): void
+    {
+        $this->customFields = $customFields;
     }
 
     /**

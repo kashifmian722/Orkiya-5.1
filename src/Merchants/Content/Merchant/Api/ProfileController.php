@@ -128,11 +128,31 @@ class ProfileController
                 array_intersect_key($dataBag->all(), array_flip($properties))
             )
         ], $salesChannelContext->getContext());
+        if($dataBag->has('main_category')){
+            $this->merchantRepository->update([
+                [
+                    'id' => $merchant->getId(),
+                    "customFields" => [
+                        "main_category" => $dataBag->get("main_category")
+                    ]
+                ]
+                
 
-        if ($dataBag->has('services')) {
-            $this->cleanupServices($merchant, array_column($dataBag->all()['services'], 'id'));
+            ], $salesChannelContext->getContext());
         }
-
+        
+                 if ($dataBag->has('googlemap')) {
+    $this->merchantRepository->update([
+        [
+            'id' => $merchant->getId(),
+            "customFields" => [
+                "googlemap" => $dataBag->get("googlemap")
+            ]
+        ]
+    ], $salesChannelContext->getContext());
+}
+                
+      
         return new JsonResponse($this->fetchProfileData($salesChannelContext, $merchant));
     }
 
@@ -153,7 +173,7 @@ class ProfileController
      *                     type="string",
      *                     format="file",
      *                 ),
-     *                 required={"file"}
+         *                 required={"file"}
      *             )
      *         )
      *     ),
@@ -197,7 +217,6 @@ class ProfileController
 
         return new JsonResponse(true);
     }
-
     /**
      * @OA\Delete(
      *      path="/profile/media/{mediaId}",
@@ -239,6 +258,16 @@ class ProfileController
             ->add('publicPhoneNumber', new Type('string'))
             ->add('publicEmail', new Type('string'))
             ->add('publicOpeningTimes', new Type('string'))
+            ->add('whatsapp', new Type('string'))
+            ->add('facebook', new Type('string'))
+            ->add('instagram', new Type('string'))
+            ->add('twitter', new Type('string'))
+            ->add('youtube', new Type('string'))
+            ->add('longitude', new Type('string'))
+            ->add('latitude', new Type('string'))
+            ->add('radius', new Type('string'))
+            ->add('locationpin', new Type('string'))
+            ->add('tags', new Type('string'))
             ->add('publicDescription', new Type('string'))
             ->add('publicWebsite', new Type('string'))
             ->add('categoryId', new EntityExists(['entity' => 'category', 'context' => $salesChannelContext->getContext()]))
@@ -306,4 +335,6 @@ class ProfileController
             ];
         }, $idsToBeDeleted), Context::createDefaultContext());
     }
+
+    
 }

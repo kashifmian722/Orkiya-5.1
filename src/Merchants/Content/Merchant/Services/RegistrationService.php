@@ -32,6 +32,16 @@ class RegistrationService
      * @var EntityRepository
      */
     private $merchantRepository;
+  	
+  	/**
+     * @var EntityRepository
+     */
+    private $posOutletRepository;
+  	
+  	/**
+     * @var EntityRepository
+     */
+    private $posUserRepository;
 
     /**
      * @var DataValidator
@@ -45,10 +55,14 @@ class RegistrationService
 
     public function __construct(
         EntityRepository $merchantRepository,
+      	EntityRepository $posOutletRepository,
+      	EntityRepository $posUserRepository,
         DataValidator $dataValidator,
         TemplateMailSender $templateMailSender
     ) {
         $this->merchantRepository = $merchantRepository;
+      	$this->posOutletRepository = $posOutletRepository;
+      	$this->posUserRepository = $posUserRepository;
         $this->dataValidator = $dataValidator;
         $this->templateMailSender = $templateMailSender;
     }
@@ -59,7 +73,7 @@ class RegistrationService
         if ($violations->count()) {
             throw new ConstraintViolationException($violations, $parameters);
         }
-
+      	
         $parameters['id'] = Uuid::randomHex();
 
         if (!$this->isMailAvailable($parameters['email'])) {
@@ -69,12 +83,53 @@ class RegistrationService
         $parameters['activationCode'] = Uuid::randomHex();
 
         $this->merchantRepository->create([$parameters], $salesChannelContext->getContext());
+      	
+      	$outletId = Uuid::randomHex();
+      	$outletParams = [
+          'id'		=> $outletId,
+          'name'	=> $parameters['publicCompanyName'],
+      	  'address' => "Lahore",
+      	  'city' 	=> "Lahore",
+      	  'countryId' => "f6cb11055b9a4691bf6662d126c35138",
+      	  'zipcode' => "54000",
+          'active' => true
+      	];	
+      	
+      	$this->posOutletRepository->create([$outletParams], $salesChannelContext->getContext());
+      
+      	
 
         $criteria = new Criteria([$parameters['id']]);
 
         $result = $this->merchantRepository->search($criteria, $salesChannelContext->getContext());
         /** @var MerchantEntity $merchant */
         $merchant = $result->first();
+      	
+      	$this->merchantRepository->update([
+          [
+            'id' => $merchant->getId(),
+            "customFields" => [
+              "posOutletId" => $outletId,
+            ]
+          ]
+
+
+        ], $salesChannelContext->getContext());
+      
+      	$posUser = [
+        	'outletId' => $outletId,
+          	'password' => $parameters['password'],
+          	'email'	=> $parameters['email'],
+          	'username' => $parameters['email'],
+          	'firstName' => $parameters['publicCompanyName'],
+          	'lastName' => " ",
+          	'active' => true,
+          	'customFields' => [
+              "merchantId" => $merchant->getId(),
+            ]
+        ];
+      
+      	$this->posUserRepository->create([$posUser], $salesChannelContext->getContext());
 
         $this->sendMail($merchant, $salesChannelContext);
 

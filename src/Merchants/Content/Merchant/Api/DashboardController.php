@@ -7,8 +7,11 @@ use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Aggregation\Metric\SumAggregation;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Grouping\FieldGrouping;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\RangeFilter;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
 use Shopware\Core\System\StateMachine\StateMachineRegistry;
 use Shopware\Core\System\StateMachine\Transition;
@@ -23,7 +26,7 @@ use Symfony\Component\Routing\Annotation\Route;
 /**
  * @RouteScope(scopes={"merchant-api"})
  */
-class OrderController
+class DashboardController
 {
     /**
      * @var EntityRepositoryInterface
@@ -40,125 +43,77 @@ class OrderController
      */
     private $stateMachineRegistry;
 
-    /**
-     * @var EntityRepositoryInterface
-     */
-    private $paymentMethodRepository;
-
-    /**
-     * @var EntityRepositoryInterface
-     */
-    private $shippingMethodRepository;
-
     public function __construct(
         EntityRepositoryInterface $merchantRepository,
         EntityRepositoryInterface $orderRepository,
-        StateMachineRegistry $stateMachineRegistry,
-        EntityRepositoryInterface $paymentMethodRepository,
-        EntityRepositoryInterface $shippingMethodRepository
+        StateMachineRegistry $stateMachineRegistry
     ) {
         $this->merchantRepository = $merchantRepository;
         $this->orderRepository = $orderRepository;
         $this->stateMachineRegistry = $stateMachineRegistry;
-        $this->paymentMethodRepository = $paymentMethodRepository;
-        $this->shippingMethodRepository = $shippingMethodRepository;
     }
 
     /**
      * @OA\Get(
-     *      path="/orders",
-     *      description="List all orders",
-     *      operationId="listOrders",
+     *      path="/dashboard",
+     *      description="Give Turnover Details",
+     *      operationId="turnOver",
      *      tags={"Merchant"}
      * )
-     * @Route(name="merchant-api.orders.load", path="/merchant-api/v{version}/orders", methods={"GET"})
+     * @Route(name="merchant-api.dashboard.load", path="/merchant-api/v{version}/dashboard", methods={"GET"})
      */
-    public function load(MerchantEntity $merchant, Request $request): JsonResponse
+    public function index(MerchantEntity $merchant, Request $request): JsonResponse
     {
-        $orderState = $request->query->getAlnum('state');
-        $limit = $request->query->getInt('limit', 25);
-        $offset = $request->query->getInt('offset', 0);
-
+      
+      	// Last 5 Orders
+		$limit = 5;
+        $offset = 0;
         $criteria = new Criteria();
         $criteria->addAssociation('deliveries');
         $criteria->addAssociation('lineItems');
         $criteria->addAssociation('transactions');
+      	
+        $criteria->addSorting( new FieldSorting('order.orderNumber', 'DESC'));
         $criteria->setTotalCountMode(Criteria::TOTAL_COUNT_MODE_EXACT)
             ->addFilter(new EqualsFilter('merchants.id', $merchant->getId()))
-            ->setLimit($limit)
+          	->setLimit($limit)
             ->setOffset($offset);
-
-        if ($orderState !== '') {
-            $criteria->addFilter(
-                new EqualsFilter('stateMachineState.technicalName', $orderState)
-            );
-        }
-
-        $orders = $this->orderRepository->search($criteria, Context::createDefaultContext());
-
+		
+        $last_five_orders = $this->orderRepository->search($criteria, Context::createDefaultContext());
+      	
+      
+      	// Today's Info
+      	$criteria = new Criteria();
+        $criteria->addAssociation('deliveries');
+        $criteria->addAssociation('lineItems');
+        $criteria->addAssociation('transactions');
+      	
+        $criteria->addSorting( new FieldSorting('order.orderNumber', 'DESC'));
+        $criteria->setTotalCountMode(Criteria::TOTAL_COUNT_MODE_EXACT)
+            ->addFilter(new EqualsFilter('merchants.id', $merchant->getId()));
+      	$criteria->addFilter(new EqualsFilter('order.orderDate', date("Y-m-d")));
+		
+        $todaysInfo = $this->orderRepository->search($criteria, Context::createDefaultContext());
+      
+      	// Last 7 Days Data
+      	$criteria = new Criteria();
+        $criteria->addAssociation('transactions');
+      	
+      	
+      	
+        $criteria->setTotalCountMode(Criteria::TOTAL_COUNT_MODE_EXACT)
+            ->addFilter(new EqualsFilter('merchants.id', $merchant->getId()));
+      	$criteria->addFilter(new RangeFilter('order.orderDate', [RangeFilter::LTE =>date("Y-m-d"), RangeFilter::GTE => date('Y-m-d', strtotime(date("Y-m-d"). ' - 7 days'))] ));
+		
+        $lastSevenDays = $this->orderRepository->search($criteria, Context::createDefaultContext());
+      
+      	$data = [
+        	'lastOrders' => $last_five_orders->getEntities(),
+          	'todaysInfo' => $todaysInfo->getEntities(),
+          	'lastSevenDays' => $lastSevenDays->getEntities()
+        ];
         return new JsonResponse([
-            'data' => $orders->getEntities(),
-            'total' => $orders->getTotal()
-        ]);
-    }
-
-
-    /**
-     * @OA\Get(
-     *      path="/orders/getshipping",
-     *      description="List All Shipping Methods",
-     *      operationId="getshipping",
-     *      tags={"Merchant"}
-     * )
-     * @Route(name="merchant-api.orders.shipping-methods", path="/merchant-api/v{version}/orders/getshipping", methods={"GET"})
-     */
-    public function loadShippingMethod(Request $request)
-    {
-
-        $shippingMehtod = [];
-        $criteria = new Criteria();
-        $shippingMethodEntity = $this->shippingMethodRepository->search(
-            $criteria,
-            Context::createDefaultContext());
-        foreach ($shippingMethodEntity->getElements() as $key => $method) {
-            $shippingMehtod[] = [
-                'id' => $method->getId(),
-                'name' => $method->getName(),
-            ];
-        }
-        return new JsonResponse([
-            'data' => $shippingMehtod
-        ]);
-    }
-
-    /**
-     * @OA\Get(
-     *      path="/orders/getpaymentmethod",
-     *      description="List All Payment Methods",
-     *      operationId="paymentMethods",
-     *      tags={"Merchant"}
-     * )
-     * @Route(name="merchant-api.orders.payment-methods", path="/merchant-api/v{version}/orders/getpaymentmethod", methods={"GET"})
-     */
-    public function loadPaymentMethod(Request $request)
-    {
-        $paymentmethods = [];
-        $criteria = new Criteria();
-        $criteria->addSorting(new FieldSorting('position'));
-        $criteria->addFilter(new EqualsFilter('active', 1));
-        $paymentMethodEntity = $this->paymentMethodRepository->search(
-            $criteria,
-            Context::createDefaultContext()
-        );
-
-        foreach ($paymentMethodEntity->getElements() as $key => $method) {
-            $paymentmethods[] = [
-                'id' => $method->getId(),
-                'name' => $method->getName(),
-            ];
-        }
-        return new JsonResponse([
-            'data' => $paymentmethods
+            'data' => $data
         ]);
     }
 
@@ -173,6 +128,39 @@ class OrderController
      */
     public function detail(MerchantEntity $merchant, string $orderId): JsonResponse
     {
+        $criteria = new Criteria([$orderId]);
+        $criteria->addFilter(new EqualsFilter('merchants.id', $merchant->getId()));
+        $criteria->addAssociation('deliveries');
+        $criteria->addAssociation('lineItems');
+        $criteria->addAssociation('transactions');
+
+        $order = $this->orderRepository->search($criteria, Context::createDefaultContext())->first();
+
+        if (!$order) {
+            throw new NotFoundHttpException(sprintf('Order with ID \'%s\' couldn\'t be found', $orderId));
+        }
+
+        return new JsonResponse($order);
+    }
+
+
+    /**
+     * @OA\Post(
+     *      path="/orders",
+     *      description="Create An Order By Merchant",
+     *      operationId="createOrder",
+     *      tags={"Merchant"},
+     *      @OA\Response(
+     *          response="200",
+     *          ref="#/definitions/SuccessResponse"
+     *     )
+     * )
+     * @Route(name="merchant-api.orders.create", path="/merchant-api/v{version}/orders", methods={"POST"})
+     */
+    public function create(MerchantEntity $merchant, Request $request): JsonResponse
+    {
+        var_dump("Entered");
+        exit();
         $criteria = new Criteria([$orderId]);
         $criteria->addFilter(new EqualsFilter('merchants.id', $merchant->getId()));
         $criteria->addAssociation('deliveries');
